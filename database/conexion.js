@@ -1,6 +1,8 @@
 //conexion a base de datos 
 const mongoose = require("mongoose")
 
+
+
 const conexion = async() => {
 
     try {
