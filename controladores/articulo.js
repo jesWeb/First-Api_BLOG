@@ -21,15 +21,15 @@ const curso = (req, res) => {
     console.log("se ha ejecutado el endpoint probando")
 
     return res.status(200).json([{
-        curso: 'Master en JS',
-        autor: 'Jesus gutierrez',
-        url: 'jesusweb.es/master-react'
-    },
-    {
-        curso: 'Master en JS',
-        autor: 'Jesus gutierrez',
-        url: 'jesusweb.es/master-react'
-    }
+            curso: 'Master en JS',
+            autor: 'Jesus gutierrez',
+            url: 'jesusweb.es/master-react'
+        },
+        {
+            curso: 'Master en JS',
+            autor: 'Jesus gutierrez',
+            url: 'jesusweb.es/master-react'
+        }
     ]);
 }
 
@@ -300,6 +300,55 @@ const imagen = (req, res) => {
     });
 };
 
+const buscador = async (req, res) => {
+    try {
+        // Obtener el string de búsqueda desde los parámetros de la URL
+        let busqueda = req.params.busqueda;
+
+        // Realizar la consulta de búsqueda con regex
+        const consultaBusqueda = await Articulo.find({
+            "$or": [
+                {
+                    "titulo": {
+                        "$regex": busqueda,
+                        "$options": "i"
+                    }
+                },
+                {
+                    "contenido": {
+                        "$regex": busqueda,
+                        "$options": "i"
+                    }
+                }
+            ]
+        })
+        .sort({ fecha: -1 }); // Ordenar por fecha descendente
+
+        // Verificar si no se encontraron resultados
+        if (!consultaBusqueda || consultaBusqueda.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                mensaje: 'No se han encontrado artículos'
+            });
+        }
+
+        // Si se encontraron artículos, devolverlos
+        return res.status(200).json({
+            status: 'success',
+            articulos: consultaBusqueda
+        });
+
+    } catch (error) {
+        // Manejo del error en caso de fallo en la consulta o en cualquier otra parte del código
+        return res.status(500).json({
+            status: 'error',
+            mensaje: 'Hubo un error al realizar la búsqueda',
+            error: error.message || error
+        });
+    }
+};
+
+
 module.exports = {
     prueba,
     curso,
@@ -309,5 +358,6 @@ module.exports = {
     borrar,
     editar,
     subir,
-    imagen
+    imagen,
+    buscador
 }
