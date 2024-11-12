@@ -1,5 +1,13 @@
-const validator = require("validator");
+//elimnar  fs de node 
+const fs = require("fs")
+const path = require("path");
+
+const {
+    validarArticulo
+} = require("../helpers/validar");
+
 const Articulo = require("../modelos/Articulo");
+
 
 const prueba = (req, res) => {
     return res.status(200).json({
@@ -13,15 +21,15 @@ const curso = (req, res) => {
     console.log("se ha ejecutado el endpoint probando")
 
     return res.status(200).json([{
-            curso: 'Master en JS',
-            autor: 'Jesus gutierrez',
-            url: 'jesusweb.es/master-react'
-        },
-        {
-            curso: 'Master en JS',
-            autor: 'Jesus gutierrez',
-            url: 'jesusweb.es/master-react'
-        }
+        curso: 'Master en JS',
+        autor: 'Jesus gutierrez',
+        url: 'jesusweb.es/master-react'
+    },
+    {
+        curso: 'Master en JS',
+        autor: 'Jesus gutierrez',
+        url: 'jesusweb.es/master-react'
+    }
     ]);
 }
 
@@ -32,18 +40,8 @@ const crear = async (req, res) => {
 
     //validar datos 
     try {
-
-        let validar_titulo = !validator.isEmpty(parametros.titulo) &&
-            validator.isLength(parametros.titulo, {
-                min: 5,
-                max: undefined
-            });
-
-        let validar_content = !validator.isEmpty(parametros.contenido);
-
-        if (!validar_titulo || !validar_content) {
-            throw new Error("NO se ha validado la informacion !!")
-        };
+        //validar datos 
+        validarArticulo(parametros);
 
     } catch (error) {
         return res.status(400).json({
@@ -119,9 +117,7 @@ const listar = async function lista(req, res) {
     }
 }
 
-
 //sacar uno elemento 
-
 const uno = async (req, res) => {
 
     try {
@@ -144,7 +140,6 @@ const uno = async (req, res) => {
 
 
 }
-
 //metodo de borrar
 
 const borrar = async (req, res) => {
@@ -173,12 +168,9 @@ const borrar = async (req, res) => {
         });
     }
 }
-
 //editar 
 
-const editar = async (req,res) => {
-
-   
+const editar = async (req, res) => {
     try {
         //recoger elarticulo ID  a editar 
         let articuloID = req.params.id;
@@ -186,17 +178,8 @@ const editar = async (req,res) => {
         //rerocger parametros del body 
         let parametros = req.body;
 
-        let validar_titulo = !validator.isEmpty(parametros.titulo) &&
-            validator.isLength(parametros.titulo, {
-                min: 5,
-                max: undefined
-            });
-
-        let validar_content = !validator.isEmpty(parametros.contenido);
-
-        if (!validar_titulo || !validar_content) {
-            throw new Error("NO se ha validado la informacion !!")
-        };
+        //validar datos 
+        validarArticulo(parametros);
 
         //buscar y actualizar el articlo 
 
@@ -224,7 +207,98 @@ const editar = async (req,res) => {
 
 }
 
+const subir = async (req, res) => {
 
+
+    // configurar multer 
+
+    //recoger fichero de  imagen subido !re -> si existe
+    if (!req.file && !req.files) {
+        return res.status(400).json({
+            status: 'error',
+            mensaje: 'imagen invalida'
+        })
+    }
+    // console.log(req.file)
+
+    //nombre del archivo 
+    let nombreArchivo = req.file.originalname;
+    //extension del archivo 
+    let archivo_slpit = nombreArchivo.split('\.');
+    let extension = archivo_slpit[1]
+    //comprobar extsension correcta 
+    if (extension != "png" && extension != "jpg" && extension != "pdf") {
+        //borrar archivo y dar respuetsa
+        fs.unlik(req.file.path, (error) => {
+            return res.status(400).json({
+                status: 'error',
+                mensaje: 'imagen invalida'
+            })
+        })
+    } else {
+        try {
+            //recoger elarticulo ID  a editar 
+            let articuloID = req.params.id;
+
+            const ActualizarArt = await Articulo.findOneAndUpdate({
+                _id: articuloID
+            }, {
+                imagen: req.file.filename
+            }, {
+                new: true
+            });
+
+            return res.status(200).json({
+                status: 'success',
+                articulo: ActualizarArt,
+                mensaje: "success has editado articulo con el exito ",
+                fichero: req.file
+            });
+
+        } catch (error) {
+            return res.status(500).json({
+                status: "error",
+                mensaje: "No se ha podido actualizar "
+            });
+        }
+
+    }
+    //si va bien , actualizar el registro
+
+    //devolver rESPUESTA
+}
+//returnar la imagen 
+
+const imagen = (req, res) => {
+    let fichero = req.params.fichero;
+    let ruta_fisica = "/imagenes/articulos/" + fichero;
+
+    fs.stat(ruta_fisica, (error, stats) => {
+        if (error) {
+            // Si ocurre un error al intentar acceder al archivo
+            return res.status(500).json({
+                status: "error",
+                mensaje: "Error al intentar acceder al archivo",
+                error: error.message,
+                fichero,
+                ruta_fisica
+            });
+        }
+
+        if (stats.isFile()) {
+            // Si el archivo existe y es un archivo regular
+            return res.sendFile(path.resolve(ruta_fisica));
+        } else {
+
+            return res.status(404).json({
+                status: "error",
+                mensaje: "No existe la imagen",
+                fichero,
+                ruta_fisica
+            });
+        }
+    });
+};
 
 module.exports = {
     prueba,
@@ -233,5 +307,7 @@ module.exports = {
     listar,
     uno,
     borrar,
-    editar
+    editar,
+    subir,
+    imagen
 }
